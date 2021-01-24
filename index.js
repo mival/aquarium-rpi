@@ -1,61 +1,68 @@
 const raspi = require('raspi');
 const pwm = require('raspi-pwm');
 const softPwm = require('raspi-soft-pwm');
-const express = require('express')
-const cors = require('cors')
-const app = express()
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const app = express();
+
+const COLORS = {
+  blue: 'GPIO18',
+  green: 'GPIO15',
+  red: 'GPIO14',
+  white: 'GPIO23',
+  yellow: 'GPIO24',
+};
+
+const data = {};
+const colorPwms = {};
+
+const setData = (key, value) => {
+  data[key] = value;
+  return data;
+}
+
+const getData = () => {
+  return data;
+}
 
 raspi.init(() => {
-//   let i = 0;
-//   const led = new pwm.PWM('GPIO18');
-//   http.createServer(function (req, res) {
-//     res.writeHead(200, {'Content-Type': 'text/html'});
-//     res.write(req.url);
-//     const q = url.parse(req.url, true).query;
-//     const value = parseFloat(q.white);
-//     res.end();
-//   }).listen(8080);
+  // init
+  Object.keys(COLORS).forEach(color => {
+    colorPwms[color] = new softPwm.SoftPWM(COLORS[color]);
+    colorPwms[color].write(0);
+    setData(color, 0);
+  });
 
-  app.use(cors())
+  app.use(cors());
+  app.use(bodyParser.json());
 
-  app.get('/:color', function (req, res, next) {
-    const { query } = req || {};
-    const { value: valueStr } = query || {}
+  app.get('/data', (req, res) => {
+    res.json(getData());
+  })
+
+  app.get('/colors', (req, res) => {
+    res.json(Object.keys(COLORS));
+  })
+
+  app.post('/set/:color', (req, res) => {
+    const { body } = req || {};
+    const { color, value: valueStr } = body || {}
     const value = parseFloat(valueStr);
-    const blue = new softPwm.SoftPWM('GPIO18');
-    const green = new softPwm.SoftPWM('GPIO15');
-    const red = new softPwm.SoftPWM('GPIO14');
 
-    const { color } = req.params || {};
-
-    switch(color) {
-      case 'blue':
-        if (!isNaN(value)) {
-          blue.write(value);
-        }
-      case 'green':
-        if (!isNaN(value)) {
-          green.write(value);
-        }
-      case 'red':
-        if (!isNaN(value)) {
-          red.write(value);
-        }
-      break;
-
-      default:
-      break;
+    if (Object.keys(COLORS).includes(color) && colorPwms[color]) {
+      const pwm = colorPwms[color];
+      console.log(color, value)
+      if (!isNaN(value)){
+        pwm.write(value);
+      }
     }
+
+    setData(color, value);
     res.json({ color, value })
   })
 
   app.listen(8080, function () {
     console.log('CORS-enabled web server listening on port 80')
   })
-
-  // setInterval(() => {
-  //   if (i > 1) i = 0;
-  //   led.write(i); // 50% Duty Cycle, aka half brightness
-  //   i += 0.01
-  // }, 10);
 });
