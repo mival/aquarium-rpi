@@ -19,6 +19,7 @@ const colorPwms = {};
 
 const setData = (key, value) => {
   data[key] = value;
+  colorPwms[key].write(value);
   return data;
 }
 
@@ -41,6 +42,21 @@ raspi.init(() => {
     res.json(getData());
   })
 
+  app.post('/turn-on', (req, res) => {
+    Object.keys(COLORS).forEach(color => {
+      setData(color, 1);
+    })
+    res.json(getData());
+  })
+
+  app.post('/turn-off', (req, res) => {
+    Object.keys(COLORS).forEach(color => {
+      setData(color, 0);
+    })
+    res.json(getData());
+  })
+
+
   app.get('/colors', (req, res) => {
     res.json(Object.keys(COLORS));
   })
@@ -51,14 +67,11 @@ raspi.init(() => {
     const value = parseFloat(valueStr);
 
     if (Object.keys(COLORS).includes(color) && colorPwms[color]) {
-      const pwm = colorPwms[color];
-      console.log(color, value)
       if (!isNaN(value)){
-        pwm.write(value);
+        setData(color, value);
       }
     }
 
-    setData(color, value);
     res.json({ color, value })
   })
 
